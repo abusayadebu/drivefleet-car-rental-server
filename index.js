@@ -1,7 +1,7 @@
 const express = require('express');
 const dotenv =require('dotenv');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -31,12 +31,25 @@ async function run() {
     const db = client.db('driveFleet')
     const carCollection = db.collection('cars')
 
-    // create api
+    // create post api
     app.post('/add-car', async(req, res)=> {
       const carData = req.body
       console.log(carData, 'from server'); 
       const result = await carCollection.insertOne(carData)
       
+      res.json(result)
+    })
+
+    // create get api
+    app.get('/explore-cars', async(req, res)=> {
+      const result = await carCollection.find().toArray();
+      res.json(result);
+    })
+    // details api via id
+    app.get('/explore-cars/:id', async(req, res) => {
+      const {id} = req.params;
+
+      const result = await carCollection.findOne({_id: new ObjectId(id)});
       res.json(result)
     })
 
