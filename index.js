@@ -64,6 +64,13 @@ async function run() {
       res.json(result)
     })
 
+    // booking get api
+    app.get('/booking/:userId', async (req, res)=> {
+      const {userId} = req.params;
+      const result = await bookingCollection.find({userId: userId}).toArray();
+      
+      res.json(result)
+    })
 
     // Send a ping
     await client.db("admin").command({ ping: 1 });
