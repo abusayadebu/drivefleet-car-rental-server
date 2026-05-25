@@ -30,6 +30,8 @@ async function run() {
     // create database and collection
     const db = client.db('driveFleet')
     const carCollection = db.collection('cars')
+    // booking collection
+    const bookingCollection = db.collection('bookings')
 
     // create post api
     app.post('/add-car', async(req, res)=> {
@@ -50,6 +52,15 @@ async function run() {
       const {id} = req.params;
 
       const result = await carCollection.findOne({_id: new ObjectId(id)});
+      res.json(result)
+    })
+
+
+    // booking post api
+    app.post('/booking', async (req, res)=> {
+      const bookingData = req.body;
+      const result = await bookingCollection.insertOne(bookingData)
+
       res.json(result)
     })
 
