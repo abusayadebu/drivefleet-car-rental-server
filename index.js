@@ -80,7 +80,16 @@ async function run() {
 
       const result = await carCollection.find({userId: userId}).toArray();
       res.json(result)
-    })
+    })  
+
+
+    // delete car from my added car
+    app.delete('/add-car/:carId', async(req, res) => {
+      const {carId} = req.params;
+
+      const result = await carCollection.deleteOne({_id: new ObjectId(carId)});
+      res.json(result)
+    }) 
 
 
     // Send a ping
