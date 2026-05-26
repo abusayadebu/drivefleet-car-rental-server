@@ -62,18 +62,23 @@ async function run() {
     // booking collection
     const bookingCollection = db.collection('bookings')
 
-    // create post api
+    // car post api
     app.post('/add-car', verifyToken, async (req, res) => {
-      const carData = req.body
-      console.log(carData, 'from server');
-      const result = await carCollection.insertOne(carData)
+      const carData = {
+        ...req.body,
+        booking_count: 0 
+      };
 
-      res.json(result)
-    })
+      console.log(carData, 'from server');
+
+      const result = await carCollection.insertOne(carData);
+
+      res.json(result);
+    });
 
 
     //  get api for explore cars
-    app.get('/explore-cars', verifyToken, async (req, res) => {
+    app.get('/explore-cars', async (req, res) => {
 
       try {
         const { search = "", type = "" } = req.query;
@@ -120,14 +125,58 @@ async function run() {
       res.json(result)
     })
 
-
     // booking post api
     app.post('/booking', verifyToken, async (req, res) => {
-      const bookingData = req.body;
-      const result = await bookingCollection.insertOne(bookingData)
 
-      res.json(result)
-    })
+      try {
+
+        const bookingData = req.body;
+
+        if (!bookingData?.carId) {
+          return res.status(400).json({
+            success: false,
+            message: "carId is required"
+          });
+        }
+
+
+
+        // 1. Save booking
+        const bookingResult = await bookingCollection.insertOne(bookingData);
+
+        // 2. Increase booking count
+        await carCollection.updateOne(
+          { _id: new ObjectId(bookingData.carId) },
+          {
+            $inc: { booking_count: 1 }
+          }
+        );
+
+        // 3. Get updated car (IMPORTANT for frontend display)
+        const updatedCar = await carCollection.findOne(
+          { _id: new ObjectId(bookingData.carId) }
+        );
+
+        res.status(201).json({
+          success: true,
+          bookingId: bookingResult.insertedId,
+          bookingCount: updatedCar?.booking_count || 0
+        });
+
+      } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+          success: false,
+          message: "Booking failed"
+        });
+
+      }
+
+    });
+
+
 
     // booking get api
     app.get('/booking/:userId', verifyToken, async (req, res) => {
