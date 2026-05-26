@@ -1,7 +1,8 @@
 const express = require('express');
-const dotenv =require('dotenv');
+const dotenv = require('dotenv');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require('jose-cjs');
 dotenv.config();
 
 const uri = process.env.MONGODB_URI;
@@ -22,11 +23,39 @@ const client = new MongoClient(uri, {
 });
 
 
+const JWKS = createRemoteJWKSet(
+  new URL("http://localhost:3000/api/auth/jwks")
+)
+
+// middleware 
+const verifyToken = async(req, res, next) => {
+      const authHeader = req?.headers.authorization
+      if(!authHeader){
+        return res.status(401).json({message: "unauthorized"});
+      }
+      const token = authHeader.split(" ")[1]
+       if(!token){
+        return res.status(401).json({message: "unauthorized"});
+      }
+     
+      try{
+        const {payload} = await jwtVerify(token, JWKS)
+        next()
+        console.log(payload);
+      }
+      catch(error){
+        return res.status(403).json({message: "Forbidden"});
+
+      }
+      
+    }
+
+
 async function run() {
   try {
     // Connect the client
     await client.connect();
-    
+
     // create database and collection
     const db = client.db('driveFleet')
     const carCollection = db.collection('cars')
@@ -34,30 +63,31 @@ async function run() {
     const bookingCollection = db.collection('bookings')
 
     // create post api
-    app.post('/add-car', async(req, res)=> {
+    app.post('/add-car', verifyToken, async (req, res) => {
       const carData = req.body
-      console.log(carData, 'from server'); 
+      console.log(carData, 'from server');
       const result = await carCollection.insertOne(carData)
-      
+
       res.json(result)
     })
 
     // create get api
-    app.get('/explore-cars', async(req, res)=> {
+    app.get('/explore-cars', verifyToken, async (req, res) => {
       const result = await carCollection.find().toArray();
       res.json(result);
     })
-    // details api via id
-    app.get('/explore-cars/:id', async(req, res) => {
-      const {id} = req.params;
 
-      const result = await carCollection.findOne({_id: new ObjectId(id)});
+
+    // details api via id
+    app.get('/explore-cars/:id', verifyToken, async (req, res) => {
+      const { id } = req.params;
+      const result = await carCollection.findOne({ _id: new ObjectId(id) });
       res.json(result)
     })
 
 
     // booking post api
-    app.post('/booking', async (req, res)=> {
+    app.post('/booking', verifyToken, async (req, res) => {
       const bookingData = req.body;
       const result = await bookingCollection.insertOne(bookingData)
 
@@ -65,45 +95,45 @@ async function run() {
     })
 
     // booking get api
-    app.get('/booking/:userId', async (req, res)=> {
-      const {userId} = req.params;
-      const result = await bookingCollection.find({userId: userId}).toArray();
-      
+    app.get('/booking/:userId', verifyToken, async (req, res) => {
+      const { userId } = req.params;
+      const result = await bookingCollection.find({ userId: userId }).toArray();
+
       res.json(result)
     })
 
 
 
     // my added car get api
-    app.get('/add-car/:userId', async(req, res) => {
-      const {userId} = req.params;
+    app.get('/add-car/:userId', verifyToken, async (req, res) => {
+      const { userId } = req.params;
 
-      const result = await carCollection.find({userId: userId}).toArray();
+      const result = await carCollection.find({ userId: userId }).toArray();
       res.json(result)
-    })  
+    })
 
 
     // edit car from my added car
-    app.patch('/add-car/:id', async(req, res) => {
-      const {id} = req.params;
+    app.patch('/add-car/:id', verifyToken, async (req, res) => {
+      const { id } = req.params;
       const updatedData = req.body;
 
       const result = await carCollection.updateOne(
-        {_id: new ObjectId(id)},
-        {$set: updatedData}
+        { _id: new ObjectId(id) },
+        { $set: updatedData }
       );
 
       res.json(result)
-    }) 
-    
+    })
+
 
     // delete car from my added car
-    app.delete('/add-car/:carId', async(req, res) => {
-      const {carId} = req.params;
+    app.delete('/add-car/:carId', verifyToken, async (req, res) => {
+      const { carId } = req.params;
 
-      const result = await carCollection.deleteOne({_id: new ObjectId(carId)});
+      const result = await carCollection.deleteOne({ _id: new ObjectId(carId) });
       res.json(result)
-    }) 
+    })
 
 
     // Send a ping
@@ -116,10 +146,10 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.get('/', (req, res)=>{
-    res.send('server is running on browser')
+app.get('/', (req, res) => {
+  res.send('server is running on browser')
 })
 
-app.listen(PORT, ()=> {
-    console.log(`server is running on ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`server is running on ${PORT}`);
 })
