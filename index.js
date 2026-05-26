@@ -83,6 +83,20 @@ async function run() {
     })  
 
 
+    // edit car from my added car
+    app.patch('/add-car/:id', async(req, res) => {
+      const {id} = req.params;
+      const updatedData = req.body;
+
+      const result = await carCollection.updateOne(
+        {_id: new ObjectId(id)},
+        {$set: updatedData}
+      );
+
+      res.json(result)
+    }) 
+    
+
     // delete car from my added car
     app.delete('/add-car/:carId', async(req, res) => {
       const {carId} = req.params;
