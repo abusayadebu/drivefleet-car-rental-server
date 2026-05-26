@@ -28,27 +28,27 @@ const JWKS = createRemoteJWKSet(
 )
 
 // middleware 
-const verifyToken = async(req, res, next) => {
-      const authHeader = req?.headers.authorization
-      if(!authHeader){
-        return res.status(401).json({message: "unauthorized"});
-      }
-      const token = authHeader.split(" ")[1]
-       if(!token){
-        return res.status(401).json({message: "unauthorized"});
-      }
-     
-      try{
-        const {payload} = await jwtVerify(token, JWKS)
-        next()
-        console.log(payload);
-      }
-      catch(error){
-        return res.status(403).json({message: "Forbidden"});
+const verifyToken = async (req, res, next) => {
+  const authHeader = req?.headers.authorization
+  if (!authHeader) {
+    return res.status(401).json({ message: "unauthorized" });
+  }
+  const token = authHeader.split(" ")[1]
+  if (!token) {
+    return res.status(401).json({ message: "unauthorized" });
+  }
 
-      }
-      
-    }
+  try {
+    const { payload } = await jwtVerify(token, JWKS)
+    next()
+    console.log(payload);
+  }
+  catch (error) {
+    return res.status(403).json({ message: "Forbidden" });
+
+  }
+
+}
 
 
 async function run() {
@@ -71,11 +71,46 @@ async function run() {
       res.json(result)
     })
 
-    // create get api
+
+    //  get api for explore cars
     app.get('/explore-cars', verifyToken, async (req, res) => {
-      const result = await carCollection.find().toArray();
-      res.json(result);
-    })
+
+      try {
+        const { search = "", type = "" } = req.query;
+        let query = {};
+
+        // search
+        if (search) {
+          query.carName = {
+            $regex: search,
+            $options: "i",
+          };
+        }
+
+        // filter
+        if (type) {
+          query.carType = type;
+        }
+
+        console.log(query);
+
+        const result = await carCollection
+          .find(query)
+          .toArray();
+
+        res.json(result);
+
+      } catch (error) {
+
+        console.log(error);
+
+        res.status(500).json({
+          message: "Server Error",
+        });
+
+      }
+
+    });
 
 
     // details api via id
